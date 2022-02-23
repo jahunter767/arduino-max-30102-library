@@ -10,7 +10,7 @@
 #endif
 */
 
-#include "I2C.h"
+#include "lib/i2c/I2C.h"
 
 #define MAX_30102_FIFO_ALMOST_FULL_INT        0x80
 #define MAX_30102_NEW_FIFO_DATA_RDY_INT       0x40
@@ -115,7 +115,7 @@ struct max30102Readings{
 class MAX_30102 {
     private:
         //-----------------------------Constants-----------------------------//
-        
+
         static const uint8_t MAX_30102_DEFAULT_ADDRESS            = 0x57;
         static const uint8_t MAX_30102_FIFO_SIZE                  = 32;
         static const uint8_t MAX_30102_FIFO_SIZE_IN_BYTES         = 192;
@@ -195,7 +195,7 @@ class MAX_30102 {
         void storeIrReading(max30102Readings* readings, uint32_t value);
         void readSlot(max30102Readings* readings, uint8_t* byteArray, uint8_t index, uint8_t slot);
         void readSample(max30102Readings* readings, uint8_t* byteArray, uint8_t index);
-        
+
     public:
         MAX_30102();
 
@@ -221,7 +221,7 @@ class MAX_30102 {
         void enableHeartRateMode();
         void enableSpO2Mode();
         void enableMultiLEDMode(uint8_t s1, uint8_t s2, uint8_t s3, uint8_t s4);
-  
+
         // Additional Configuration
         void setADCRange(uint8_t range);
         void setSampleRate(uint8_t sampleRate);
