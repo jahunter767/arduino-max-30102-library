@@ -1,0 +1,3 @@
+[submodule "lib/i2c"]
+	path = lib/i2c
+	url = git://github.com/jahunter767/arduino-i2c-library.git
