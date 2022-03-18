@@ -1,4 +1,5 @@
 #include "MAX_30102.h"
+#include "lib/EMA.h"
 
 //************************Constructors************************//
 MAX_30102::MAX_30102(){}
@@ -252,3 +253,56 @@ void MAX_30102::readTemp(max30102Readings* temperature){
     bus->maskedWriteByte(MAX_30102_TEMP_CFG_REG, MAX_30102_TEMP_ENABLE_MASK, ~MAX_30102_TEMP_ENABLE_MASK);
     temperature->temp = bus->readByte(MAX_30102_TEMP_INT_REG) + 0.0625*(bus->readByte(MAX_30102_TEMP_FRACTION_REG) & ~MAX_30102_TEMP_FRACTION_MASK);
 } // End-readTemp
+
+float MAX_30102::computeBPM(max30102Readings* samples){
+    float bpm, bpmMeanSquareDev;
+    long meanSquareIR, rmsIR, diff;
+    uint8_t count;
+    if (samples->ir[samples->currIrSample] > 25000){
+        for (count = 0; count < (samples->currIrSample + 1); count++){
+            cascadedEMA(this->avgIRArray, samples->ir[count], this->IRFilterDivisions, 4);
+            diff = samples->ir[samples->currIrSample] - this->avgIRArray[3];
+            diff *= diff;
+            meanSquareIR = integerEMA(meanSquareIR, diff, 16);
+            rmsIR = sqrt(meanSquareIR);
+
+            if (!beat && (this->avgIRArray[0] <= (this->avgIRArray[3] - rmsIR))){
+                bpm = 60000/(millis() - this->lastPulse); // 60000 ms = 1 minute
+
+                // Checks for valid BPM, ie 25 < bpm < 225
+                if (bpm <= 25){
+                    // Heart rate likely too slow to be valid.
+                    // Absorption of the IR likely changed from patient moving
+                    // resulting in a shift in the average value.
+                    // Due to the use of an exponential moving average to filter
+                    // high frequency noise and get an average DC value the
+                    // thresholds used to detect a pulse are more resistant to change
+
+                    this->lastPulse = millis(); // Change lastPulse to ignore undetected pulses
+                }else if(bpm > 225){
+                    // Heart rate likely too fast to be valid. Possibly detected
+                    // spike from external noise such as an increase in the ambient
+                    // light or the patient moving. Hence wait for actual pulse.
+                }else{
+                    // Valid pulse most likely detected
+                    diff = bpm - this->avgBPM;
+                    diff *= diff;
+                    bpmMeanSquareDev = floatingPtEMA(bpmMeanSquareDev, diff, 6);
+                    bpmStandardDev = sqrt(bpmMeanSquareDev);
+
+                    // Filter extra spikes that are within a the valid range
+                    if ((bpm < (this->avgBPM + bpmStandardDev)) && (bpm > (this->avgBPM - bpmStandardDev))){
+                        this->lastPulse = millis();
+                        beat = true;
+                        this->avgBPM = floatingPtEMA(this->avgBPM, bpm, 6);
+                    } // End-If
+                } // End-If
+            }else if (this->avgIRArray[0] > (this->avgIRArray[3] - rmsIR)){
+                beat = false;
+            } // End-If
+        } // End-For
+    }else{
+        // Clears the bpm if no finger detected for 3 seconds
+        if ((millis() - this->lastPulse) > 3000){this->avgBPM = -1;} // End-If
+    } // End-If
+} // End-computeBPM
