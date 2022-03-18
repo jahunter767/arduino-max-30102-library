@@ -182,6 +182,7 @@ class MAX_30102 {
         unsigned long lastPulse;
         long avgIRArray[4];
         float avgBPM;
+        boolean beat;
 
         //-----------------------------Methods-----------------------------//
 
