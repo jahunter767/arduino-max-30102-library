@@ -178,7 +178,10 @@ class MAX_30102 {
 
         I2C* bus;
         uint8_t _address, currentReadPtr, numActiveSlots;
-        uint8_t slots[4];
+        uint8_t slots[4], IRFilterDivisions[4] = {2, 16, 16, 32};
+        unsigned long lastPulse;
+        long avgIRArray[4];
+        float avgBPM;
 
         //-----------------------------Methods-----------------------------//
 
@@ -230,5 +233,7 @@ class MAX_30102 {
 
         void readLEDs(max30102Readings* readings);
         void readTemp(max30102Readings* temperature);
+
+        float computeBPM(max30102Readings* samples);
 };
 #endif /* MAX_30102_h */
