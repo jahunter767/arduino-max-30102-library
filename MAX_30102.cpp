@@ -266,7 +266,7 @@ float MAX_30102::computeBPM(max30102Readings* samples){
             meanSquareIR = integerEMA(meanSquareIR, diff, 16);
             rmsIR = sqrt(meanSquareIR);
 
-            if (!beat && (this->avgIRArray[0] <= (this->avgIRArray[3] - rmsIR))){
+            if (!this->beat && (this->avgIRArray[0] <= (this->avgIRArray[3] - rmsIR))){
                 bpm = 60000/(millis() - this->lastPulse); // 60000 ms = 1 minute
 
                 // Checks for valid BPM, ie 25 < bpm < 225
@@ -279,10 +279,12 @@ float MAX_30102::computeBPM(max30102Readings* samples){
                     // thresholds used to detect a pulse are more resistant to change
 
                     this->lastPulse = millis(); // Change lastPulse to ignore undetected pulses
+                    return -1;
                 }else if(bpm > 225){
                     // Heart rate likely too fast to be valid. Possibly detected
                     // spike from external noise such as an increase in the ambient
                     // light or the patient moving. Hence wait for actual pulse.
+                    return -1;
                 }else{
                     // Valid pulse most likely detected
                     diff = bpm - this->avgBPM;
@@ -293,16 +295,19 @@ float MAX_30102::computeBPM(max30102Readings* samples){
                     // Filter extra spikes that are within a the valid range
                     if ((bpm < (this->avgBPM + bpmStandardDev)) && (bpm > (this->avgBPM - bpmStandardDev))){
                         this->lastPulse = millis();
-                        beat = true;
+                        this->beat = true;
                         this->avgBPM = floatingPtEMA(this->avgBPM, bpm, 6);
                     } // End-If
+                    return bpm;
                 } // End-If
             }else if (this->avgIRArray[0] > (this->avgIRArray[3] - rmsIR)){
-                beat = false;
+                this->beat = false;
+                return -1;
             } // End-If
         } // End-For
     }else{
         // Clears the bpm if no finger detected for 3 seconds
         if ((millis() - this->lastPulse) > 3000){this->avgBPM = -1;} // End-If
+        return -1;
     } // End-If
 } // End-computeBPM
